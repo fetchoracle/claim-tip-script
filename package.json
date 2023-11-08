@@ -1,0 +1,20 @@
+{
+  "name": "claim-tip-cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@inquirer/prompts": "^2.3.1",
+    "dayjs": "^1.11.9",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.6.3",
+    "graphql": "^16.7.1",
+    "graphql-request": "^6.1.0"
+  }
+}
