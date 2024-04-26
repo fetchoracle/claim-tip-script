@@ -10,7 +10,7 @@
 
 ## Claim one time tip
 
-Run `npm run start`, select "One Time Tip", then it will confirm the reporter public key address, and prompts the user to enter a query id and a initial timestamp to look for reports to claim tips.
+Run `npm run claimtip`, select "One Time Tip", then it will confirm the reporter public key address, and prompts the user to enter a query id and a initial timestamp to look for reports to claim tips.
 
 ```sh
 AutoPay deployed to: <autopay-contract-address>
@@ -42,7 +42,7 @@ This CLI claim tips through the following steps:
 
 ## Claim feed tip
 
-Run `npm run start` select "Feed Tip", then it will confirm the reporter public key address, and prompts the user to enter a query id, a feed it and a initial timestamp to look for reports to claim tips.
+Run `npm run claimtip` select "Feed Tip", then it will confirm the reporter public key address, and prompts the user to enter a query id, a feed it and a initial timestamp to look for reports to claim tips.
 
 ```sh
 AutoPay deployed to: <autopay-contract-address>
