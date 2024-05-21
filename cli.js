@@ -131,10 +131,16 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
     return;
   }
 
-  console.log(`Found ${reportsToClaimTips.length} reports to claim tips, timestamps:\n${reportsToClaimTips.map(getFormattedTimestamp)}`)
+  console.log(
+    `Found ${reportsToClaimTips.length} reports to claim tips for queryId ${queryId}
+    - Reports timestamp:
+        ${reportsToClaimTips.map((timestamp) => `${getFormattedTimestamp(timestamp)} (${timestamp})\n`)}
+    `
+  )
 
   try {
-    await autopayContractInstance.claimOneTimeTip(queryId, reportsToClaimTips);
+    const result = await autopayContractInstance.claimOneTimeTip(queryId, reportsToClaimTips);
+    await result.wait()
     console.log(
       `Claimed ${
         reportsToClaimTips.length
@@ -274,9 +280,9 @@ async function main() {
   const allQueryIds = await getAllQueryIds();
   const claimFunction = claimType === "OneTimeTip" ? claimOneTimeTip : claimFeedTip;
 
-  allQueryIds.forEach(async queryId => {
+  for (const queryId of allQueryIds) {
     await claimFunction(reporter, queryId, timestamp_start, autopayContractInstance);
-  });
+  }
 }
 
 exports.main = main;

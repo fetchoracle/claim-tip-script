@@ -81,7 +81,7 @@ class AutopayContract {
   }
 
   async claimOneTimeTip(queryId, reportsTimestamps) {
-    await this.autopay.claimOneTimeTip(queryId, reportsTimestamps);
+    return await this.autopay.claimOneTimeTip(queryId, reportsTimestamps);
   }
 
   async getDecodedPastTips(queryId) {
