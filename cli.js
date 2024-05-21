@@ -160,7 +160,7 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
 }
 
 async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance) {
-  autopayContractInstance.listenForTipClaimed();
+  autopayContractInstance.listenForTipClaimed(queryId);
 
   const feeds = await autopayContractInstance.getCurrentFeeds(queryId);
 
@@ -218,14 +218,20 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
     return;
   }
 
-  console.log(`Found ${reportsTimestampsNotClaimed.length} reports to claim tips, timestamps:\n${reportsTimestampsNotClaimed.map(getFormattedTimestamp)}`)
+  console.log(
+    `Found ${reportsTimestampsNotClaimed.length} reports to claim tips for queryId ${queryId}
+    - Reports timestamp:
+        ${reportsTimestampsNotClaimed.map((timestamp) => `${getFormattedTimestamp(timestamp)} (${timestamp})\n`)}
+    `
+  )
 
   try {
-    await autopayContractInstance.claimTip(
+    const result = await autopayContractInstance.claimTip(
       feedId,
       queryId,
       reportsTimestampsNotClaimed
     );
+    await result.wait()
     console.log(
       `Claimed ${
         reportsTimestampsNotClaimed.length

@@ -60,18 +60,35 @@ class AutopayContract {
     return listener;
   }
 
-  listenForTipClaimed() {
-    console.log("Listening for TipClaimed events...");
+  listenForTipClaimed(_queryId) {
+    console.log(`Listening for TipClaimed events queryId=${_queryId}...`);
 
-    this.autopay.on("TipClaimed", (_feedId, queryId, amount, reporter) => {
-      console.log("--------------------");
-      console.log("TipClaimed event emitted");
-      console.log("feedId:", _feedId);
-      console.log("queryId:", queryId);
-      console.log("amount:", amount.toString());
-      console.log("reporter:", reporter);
-      console.log("--------------------");
-    });
+    const listener = (feedId, queryId, amount, reporter) => {
+        if (_queryId !== queryId) {
+            return;
+        }
+
+        console.log("--------------------");
+        console.log("TipClaimed event emitted");
+        console.log("feedId:", feedId);
+        console.log("queryId:", queryId);
+        console.log("amount:", amount.toString());
+        console.log("reporter:", reporter);
+        console.log("--------------------");
+
+        this.autopay.off("TipClaimed", listener);
+
+        clearTimeout(timeoutId);
+    };
+
+    const timeoutId = setTimeout(() => {
+        this.autopay.off("TipClaimed", listener);
+        console.log(`Listener for queryId ${_queryId} removed after timeout`);
+    }, process.env.LISTENER_TIMEOUT_DURATION * 1000 || 120000);
+
+    this.autopay.on("TipClaimed", listener);
+
+    return listener;
   }
 
   static async create() {
