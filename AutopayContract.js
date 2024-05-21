@@ -32,7 +32,7 @@ class AutopayContract {
   }
 
   listenForOneTimeTipClaimed(_queryId, timeoutDuration = 120000) {
-    console.log("Listening for OneTimeTipClaimed events...");
+    console.log(`Listening for OneTimeTipClaimed events queryId=${_queryId}...`);
 
     const listener = (queryId, amount, reporter) => {
         if (_queryId !== queryId) {

@@ -119,7 +119,7 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
     return;
   }
 
-  console.log(`Found ${tipsTimestampsToClaim.length} tips to claim`);
+  console.log(`Found ${tipsTimestampsToClaim.length} tips to claim for queryId ${queryId}`);
 
   const reportsToClaimTips = get_reports_timestamps_to_claim_tips(
     reports,
