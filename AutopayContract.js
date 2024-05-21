@@ -31,20 +31,33 @@ class AutopayContract {
     this.autopay = autopay;
   }
 
-  listenForOneTimeTipClaimed(_queryId) {
+  listenForOneTimeTipClaimed(_queryId, timeoutDuration = 120000) {
     console.log("Listening for OneTimeTipClaimed events...");
 
-    this.autopay.on("OneTimeTipClaimed", (queryId, amount, reporter) => {
-      if (_queryId !== queryId) {
-        return;
-      }
-      console.log("--------------------");
-      console.log("OneTimeTipClaimed event emitted");
-      console.log("queryId:", queryId);
-      console.log("amount:", amount.toString());
-      console.log("reporter:", reporter);
-      console.log("--------------------");
-    });
+    const listener = (queryId, amount, reporter) => {
+        if (_queryId !== queryId) {
+            return;
+        }
+        console.log("--------------------");
+        console.log("OneTimeTipClaimed event emitted");
+        console.log("queryId:", queryId);
+        console.log("amount:", amount.toString());
+        console.log("reporter:", reporter);
+        console.log("--------------------");
+
+        this.autopay.off("OneTimeTipClaimed", listener);
+
+        clearTimeout(timeoutId);
+    };
+
+    const timeoutId = setTimeout(() => {
+        this.autopay.off("OneTimeTipClaimed", listener);
+        console.log(`Listener for queryId ${_queryId} removed after timeout`);
+    }, timeoutDuration || process.env.LISTENER_TIMEOUT_DURATION * 1000);
+
+    this.autopay.on("OneTimeTipClaimed", listener);
+
+    return listener;
   }
 
   listenForTipClaimed() {
