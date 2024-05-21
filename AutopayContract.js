@@ -31,10 +31,13 @@ class AutopayContract {
     this.autopay = autopay;
   }
 
-  listenForOneTimeTipClaimed() {
+  listenForOneTimeTipClaimed(_queryId) {
     console.log("Listening for OneTimeTipClaimed events...");
 
     this.autopay.on("OneTimeTipClaimed", (queryId, amount, reporter) => {
+      if (_queryId !== queryId) {
+        return;
+      }
       console.log("--------------------");
       console.log("OneTimeTipClaimed event emitted");
       console.log("queryId:", queryId);

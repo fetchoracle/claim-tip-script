@@ -1,4 +1,40 @@
 const { gql } = require("graphql-request");
+const { flexClient } = require("./subgraphClients");
+
+async function getAllQueryIds() {
+  const queryIdsAdded = new Set();
+  let latestQueryId = "";
+
+  do {
+    const queryIdsQuery = queryIdsAdded.size > 0 ? Array.from(queryIdsAdded).map((id) => `"${id}"`).join(',') : '""';
+
+    const query = gql`
+      query newQueryIds {
+        newReportEntities(
+          first: 1
+          where: {
+            _queryId_not_in: [
+              ${queryIdsQuery}
+            ]
+          }
+        ) {
+          _queryId
+        }
+      }
+    `;
+
+    const { newReportEntities: reports } = await flexClient.request(query);
+    const queryId = reports[0]?._queryId;
+
+    if (queryId) {
+      queryIdsAdded.add(queryId);
+    }
+
+    latestQueryId = queryId;
+  } while(latestQueryId !== undefined);
+
+  return queryIdsAdded;
+}
 
 function getReportsQuery(_time_gte, _queryId, _reporter) {
   return gql`
@@ -83,3 +119,4 @@ exports.getReportsQuery = getReportsQuery;
 exports.getTipsAddedQuery = getTipsAddedQuery;
 exports.getNewDataFeedQuery = getNewDataFeedQuery;
 exports.getDataFeedQuery = getDataFeedQuery;
+exports.getAllQueryIds = getAllQueryIds;
