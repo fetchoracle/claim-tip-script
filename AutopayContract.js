@@ -53,7 +53,7 @@ class AutopayContract {
     const timeoutId = setTimeout(() => {
         this.autopay.off("OneTimeTipClaimed", listener);
         console.log(`Listener for queryId ${_queryId} removed after timeout`);
-    }, timeoutDuration || process.env.LISTENER_TIMEOUT_DURATION * 1000);
+    }, process.env.LISTENER_TIMEOUT_DURATION * 1000 || timeoutDuration);
 
     this.autopay.on("OneTimeTipClaimed", listener);
 
