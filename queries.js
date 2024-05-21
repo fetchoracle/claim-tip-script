@@ -62,8 +62,7 @@ function getTipsAddedQuery(_startTime_gte, _queryId, _tipper) {
     query {
       tipAddedEntities(orderBy: _startTime, orderDirection: asc, where: {
         _startTime_gte: ${_startTime_gte},
-        _queryId: "${_queryId}",
-        _tipper: "${_tipper}"
+        _queryId: "${_queryId}"
       }) {
         id
         _queryId
