@@ -11,6 +11,7 @@ const {
   getFormattedTimestamp,
   getYesterdayUnixTimestamp,
 } = require("./timestamps_utils");
+const { getAllQueryIds } = require("./queries");
 
 function binarySearch(pastTips, target_timestamp) {
   let left = 0;
@@ -90,7 +91,7 @@ function get_reports_timestamps_to_claim_tips(reports, tipTimestampsToClaim) {
 }
 
 async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContractInstance) {
-  autopayContractInstance.listenForOneTimeTipClaimed();
+  autopayContractInstance.listenForOneTimeTipClaimed(queryId);
 
   const { newReportEntities: reports } = await flexClient.request(
     getReportsQuery(timestamp_start, queryId, reporter)
@@ -102,9 +103,9 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
 
   if (tipsAdded.length === 0) {
     console.log(
-      "No Tips added, please add a tip before claiming a One Time Tip"
+      `No Tips added for queryId ${queryId}, please add a tip before claiming a One Time Tip`
     );
-    process.exit(0);
+    return;
   }
 
   const tipsTimestampsToClaim = await get_tips_timestamps_to_claim(
@@ -114,11 +115,11 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
   );
 
   if (tipsTimestampsToClaim.length === 0) {
-    console.log("No tips to claim");
+    console.log(`No tips to claim for queryId ${queryId}`);
     return;
   }
 
-  console.log(`Found ${tipsTimestampsToClaim.length} tips to claim`);
+  console.log(`Found ${tipsTimestampsToClaim.length} tips to claim for queryId ${queryId}`);
 
   const reportsToClaimTips = get_reports_timestamps_to_claim_tips(
     reports,
@@ -126,14 +127,20 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
   );
 
   if (reportsToClaimTips.length === 0) {
-    console.log("No reports to claim tips");
+    console.log(`No reports to claim tips for queryId ${queryId}`);
     return;
   }
 
-  console.log(`Found ${reportsToClaimTips.length} reports to claim tips, timestamps:\n${reportsToClaimTips.map(getFormattedTimestamp)}`)
+  console.log(
+    `Found ${reportsToClaimTips.length} reports to claim tips for queryId ${queryId}
+    - Reports timestamp:
+        ${reportsToClaimTips.map((timestamp) => `${getFormattedTimestamp(timestamp)} (${timestamp})\n`)}
+    `
+  )
 
   try {
-    await autopayContractInstance.claimOneTimeTip(queryId, reportsToClaimTips);
+    const result = await autopayContractInstance.claimOneTimeTip(queryId, reportsToClaimTips);
+    await result.wait()
     console.log(
       `Claimed ${
         reportsToClaimTips.length
@@ -153,15 +160,15 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
 }
 
 async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance) {
-  autopayContractInstance.listenForTipClaimed();
+  autopayContractInstance.listenForTipClaimed(queryId);
 
   const feeds = await autopayContractInstance.getCurrentFeeds(queryId);
 
   if (feeds.length === 0) {
     console.log(
-      "No feeds available, please add a feed before claiming a Feed Tip"
+      `No feeds available for queryId ${queryId}, please add a feed before claiming a Feed Tip`
     );
-    process.exit(0);
+    return;
   }
 
   const feedId = await select({
@@ -207,18 +214,24 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
   }
 
   if (reportsTimestampsNotClaimed.length === 0) {
-    console.log("No reports to claim tips");
+    console.log(`No reports to claim tips for queryId ${queryId}`);
     return;
   }
 
-  console.log(`Found ${reportsTimestampsNotClaimed.length} reports to claim tips, timestamps:\n${reportsTimestampsNotClaimed.map(getFormattedTimestamp)}`)
+  console.log(
+    `Found ${reportsTimestampsNotClaimed.length} reports to claim tips for queryId ${queryId}
+    - Reports timestamp:
+        ${reportsTimestampsNotClaimed.map((timestamp) => `${getFormattedTimestamp(timestamp)} (${timestamp})\n`)}
+    `
+  )
 
   try {
-    await autopayContractInstance.claimTip(
+    const result = await autopayContractInstance.claimTip(
       feedId,
       queryId,
       reportsTimestampsNotClaimed
     );
+    await result.wait()
     console.log(
       `Claimed ${
         reportsTimestampsNotClaimed.length
@@ -254,14 +267,8 @@ async function main() {
 
   if (!public_key) {
     console.error("Please set ACCT_PUBLIC_KEY in the .env file");
-    process.exit(1);
+    return;
   }
-
-  const queryId = await input({
-    message: "Enter query ID (default = SpotPrice pls/usd)",
-    default:
-      "0x83245f6a6a2f6458558a706270fbcc35ac3a81917602c1313d3bfa998dcc2d4b",
-  });
 
   const timestamp_start = await input({
     message: "Enter a start timestamp to lookup for reports (default = yesterday in unix timestamp))",
@@ -276,13 +283,11 @@ async function main() {
     ],
   });
 
-  switch (claimType) {
-    case "OneTimeTip":
-      claimOneTimeTip(reporter, queryId, timestamp_start, autopayContractInstance);
-      break;
-    case "FeedTip":
-      claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance);
-      break;
+  const allQueryIds = await getAllQueryIds();
+  const claimFunction = claimType === "OneTimeTip" ? claimOneTimeTip : claimFeedTip;
+
+  for (const queryId of allQueryIds) {
+    await claimFunction(reporter, queryId, timestamp_start, autopayContractInstance);
   }
 }
 
