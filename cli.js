@@ -48,7 +48,6 @@ function handleRevertError(error) {
   }
 
   console.log(errorMessage);
-  console.log(error);
 }
 
 async function get_tips_timestamps_to_claim(
@@ -193,12 +192,12 @@ function getEligibleReports(reportsTimestamp, isOneTimeTip = false) {
     const isWithinBufferTime = age >= bufferTime;
     const isWithinReportTimestampTimeout = age <= reportTimestampTimeout;
 
-    const bufferTimeComparison = `${bufferTime} <= ${age} = ${isWithinBufferTime}`;
-    const reportTimeoutComparison = `${age} <= ${reportTimestampTimeout} = ${isWithinReportTimestampTimeout}`;
+    const oneTimeTipComparison = `${age} >= ${bufferTime} = ${isWithinBufferTime}`;
+    const feedTipComparison = `${bufferTime} <= ${age} <= ${reportTimestampTimeout} =  ${isWithinBufferTime && isWithinReportTimestampTimeout}`;
 
     const comparisonConditionInfo = isOneTimeTip
-      ? `age >= bufferTime: ${bufferTimeComparison}`
-      : `Buffer time <= age <= reportTimestampTimeout: ${reportTimeoutComparison}`;
+      ? `age >= bufferTime: ${oneTimeTipComparison}`
+      : `Buffer time <= age <= reportTimestampTimeout: ${feedTipComparison}`;
 
     console.log(`
       Report ${reportTimestamp} (${getFormattedTimestamp(reportTimestamp)}) is not eligible for tip claim.
@@ -225,7 +224,9 @@ function getEligibleReports(reportsTimestamp, isOneTimeTip = false) {
 
 
 async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance, feedId) {
-  console.log(`Checking eligible reports timestamps for Feed Tip ${feedId}`);
+  console.log(`Checking eligible reports timestamps for FeedTip Id ${feedId}`);
+
+  autopayContractInstance.listenForTipClaimed(queryId, feedId);
 
   const { newReportEntities: reports } = await flexClient.request(
     getReportsQuery(timestamp_start, queryId, reporter)
@@ -304,8 +305,6 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
 }
 
 async function claimFeedTips(reporter, queryId, timestamp_start, autopayContractInstance) {
-  autopayContractInstance.listenForTipClaimed(queryId);
-
   const feeds = await autopayContractInstance.getCurrentFeeds(queryId);
 
   if (feeds.length === 0) {

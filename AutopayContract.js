@@ -60,7 +60,7 @@ class AutopayContract {
     return listener;
   }
 
-  listenForTipClaimed(_queryId) {
+  listenForTipClaimed(_queryId, _feedId, timeoutDuration = 120000) {
     console.log(`Listening for TipClaimed events queryId=${_queryId}...`);
 
     const listener = (feedId, queryId, amount, reporter) => {
@@ -84,7 +84,7 @@ class AutopayContract {
     const timeoutId = setTimeout(() => {
         this.autopay.off("TipClaimed", listener);
         console.log(`Listener for queryId ${_queryId} removed after timeout`);
-    }, process.env.LISTENER_TIMEOUT_DURATION * 1000 || 120000);
+    }, process.env.LISTENER_TIMEOUT_DURATION * 1000 || timeoutDuration);
 
     this.autopay.on("TipClaimed", listener);
 
