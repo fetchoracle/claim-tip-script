@@ -30,6 +30,27 @@ function binarySearch(pastTips, target_timestamp) {
   return left;
 }
 
+function handleRevertError(error) {
+  const errorMessages = {
+    "tip already claimed": "Some tips were already claimed, algorithm error",
+    "reward already claimed": "Reward already claimed, algorithm error",
+    "buffer time has not passed": "Buffer time of 12 hours has not passed since the report timestamp. Please wait and try again later",
+    "timestamp too old to claim tip": "Timestamp too old to claim tip, algorithm error",
+    "price threshold not met": "Price threshold not met",
+  };
+
+  const errorMessage = errorMessages[error.reason];
+
+  if (!errorMessage) {
+    console.log('Unexpected error:')
+    console.log(error)
+    return
+  }
+
+  console.log(errorMessage);
+  console.log(error);
+}
+
 async function get_tips_timestamps_to_claim(
   tipsAdded,
   queryId,
@@ -149,15 +170,7 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
       } tips, timestamps:\n${eligibleReports.map(getFormattedTimestamp)}`
     );
   } catch (error) {
-    if (error.reason === "tip already claimed")
-      console.log("Some tips were already claimed, algorithm error");
-    else if (error.reason === "buffer time has not passed")
-      console.log(
-        "Buffer time of 12 hours has not passed since the report timestamp. Please wait and try again later"
-      );
-    else {
-      throw error;
-    }
+    handleRevertError(error);
   }
 }
 
@@ -271,18 +284,7 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
       )}`
     );
   } catch (error) {
-    console.log("Error:");
-    if (error.reason === "reward already claimed") {
-      console.log("Reward already claimed, algorithm error");
-      console.log(error)
-    }
-    else if (error.reason === "buffer time has not passed")
-      console.log(
-        "Buffer time of 12 hours has not passed since the report timestamp. Please wait and try again later"
-      );
-    else {
-      throw error;
-    }
+    handleRevertError(error);
   }
 }
 
