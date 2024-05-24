@@ -111,7 +111,7 @@ function get_reports_timestamps_to_claim_tips(reports, tipTimestampsToClaim) {
   return reportsToClaimTips;
 }
 
-async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContractInstance) {
+async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContractInstance) {
   autopayContractInstance.listenForOneTimeTipClaimed(queryId);
 
   const { newReportEntities: reports } = await flexClient.request(
@@ -167,7 +167,9 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
     console.log(
       `Claimed ${
         eligibleReports.length
-      } tips, timestamps:\n${eligibleReports.map(getFormattedTimestamp)}`
+      } tips, timestamps:\n${eligibleReports.map(getFormattedTimestamp)}
+      queryId: ${queryId}
+      `
     );
   } catch (error) {
     handleRevertError(error);
@@ -196,24 +198,9 @@ function getEligibleReports(reports_timestamp, is_one_time_tip = false) {
   return eligibleReports;
 }
 
-async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance) {
-  autopayContractInstance.listenForTipClaimed(queryId);
 
-  const feeds = await autopayContractInstance.getCurrentFeeds(queryId);
-
-  if (feeds.length === 0) {
-    console.log(
-      `No feeds available for queryId ${queryId}, please add a feed before claiming a Feed Tip`
-    );
-    return;
-  }
-
-  const feedId = await select({
-    message: "Select a Feed ID",
-    choices: feeds.map((feed) => ({
-      value: feed,
-    })),
-  });
+async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance, feedId) {
+  console.log(`Checking eligible reports timestamps for Feed Tip ${feedId}`);
 
   const { newReportEntities: reports } = await flexClient.request(
     getReportsQuery(timestamp_start, queryId, reporter)
@@ -281,10 +268,30 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
         reportsTimestampsNotClaimed.length
       } tips, timestamps:\n${reportsTimestampsNotClaimed.map(
         getFormattedTimestamp
-      )}`
+      )}
+      feedId: ${feedId}
+      queryId: ${queryId}
+      `
     );
   } catch (error) {
     handleRevertError(error);
+  }
+}
+
+async function claimFeedTips(reporter, queryId, timestamp_start, autopayContractInstance) {
+  autopayContractInstance.listenForTipClaimed(queryId);
+
+  const feeds = await autopayContractInstance.getCurrentFeeds(queryId);
+
+  if (feeds.length === 0) {
+    console.log(
+      `No feeds available for queryId ${queryId}, please add a feed before claiming a Feed Tip`
+    );
+    return;
+  }
+
+  for (const feedId of feeds) {
+    await claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance, feedId);
   }
 }
 
@@ -317,7 +324,7 @@ async function main() {
   });
 
   const allQueryIds = await getAllQueryIds();
-  const claimFunction = claimType === "OneTimeTip" ? claimOneTimeTip : claimFeedTip;
+  const claimFunction = claimType === "OneTimeTip" ? claimOneTimeTips : claimFeedTips;
 
   for (const queryId of allQueryIds) {
     await claimFunction(reporter, queryId, timestamp_start, autopayContractInstance);
