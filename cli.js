@@ -126,25 +126,27 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
     tipsTimestampsToClaim
   );
 
-  if (reportsToClaimTips.length === 0) {
-    console.log(`No reports to claim tips for queryId ${queryId}`);
+  const eligibleReports = getEligibleReports(reportsToClaimTips, true);
+
+  if (eligibleReports.length === 0) {
+    console.log(`No eligible reports to claim tips for queryId ${queryId}`);
     return;
   }
 
   console.log(
-    `Found ${reportsToClaimTips.length} reports to claim tips for queryId ${queryId}
+    `Found ${eligibleReports.length} reports to claim tips for queryId ${queryId}
     - Reports timestamp:
-        ${reportsToClaimTips.map((timestamp) => `${getFormattedTimestamp(timestamp)} (${timestamp})\n`)}
+        ${eligibleReports.map((timestamp) => `${getFormattedTimestamp(timestamp)} (${timestamp})\n`)}
     `
   )
 
   try {
-    const result = await autopayContractInstance.claimOneTimeTip(queryId, reportsToClaimTips);
+    const result = await autopayContractInstance.claimOneTimeTip(queryId, eligibleReports);
     await result.wait()
     console.log(
       `Claimed ${
-        reportsToClaimTips.length
-      } tips, timestamps:\n${reportsToClaimTips.map(getFormattedTimestamp)}`
+        eligibleReports.length
+      } tips, timestamps:\n${eligibleReports.map(getFormattedTimestamp)}`
     );
   } catch (error) {
     if (error.reason === "tip already claimed")
@@ -157,6 +159,28 @@ async function claimOneTimeTip(reporter, queryId, timestamp_start, autopayContra
       throw error;
     }
   }
+}
+
+function getEligibleReports(reports_timestamp, is_one_time_tip = false) {
+  const twelve_hours = 12 * 60 * 60;
+  const four_weeks = 4 * 7 * 24 * 60 * 60;
+
+  const current_time_seconds = Math.floor(Date.now() / 1000);
+  const buffer_time = parseInt(process.env.BUFFER_TIME) || twelve_hours;
+  const report_timestamp_timeout = parseInt(process.env.REPORT_TIMESTAMP_TIMEOUT) || four_weeks;
+
+  const has_condition_one_time_tip = (age) => age >= buffer_time;
+  const has_condititon_feed_tip = (age) => age >= buffer_time && age <= report_timestamp_timeout;
+
+  const has_conditition = is_one_time_tip ? has_condition_one_time_tip : has_condititon_feed_tip;
+
+  const eligibleReports = reports_timestamp.filter((report_timestamp) => {
+      const age = current_time_seconds - report_timestamp;
+      return has_conditition(age);
+    }
+  );
+
+  return eligibleReports;
 }
 
 async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance) {
@@ -195,10 +219,17 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
     dataFeed._startTime,
   ]);
 
+  const eligibleReports = getEligibleReports(reportsToClaimTips, false);
+
+  if (eligibleReports.length === 0) {
+    console.log(`No eligible reports to claim tips for queryId ${queryId}`);
+    return;
+  }
+
   const statusList = await autopayContractInstance.getRewardClaimStatusList(
     feedId,
     queryId,
-    reportsToClaimTips
+    eligibleReports
   );
 
   const reportsTimestampsNotClaimed = [];
@@ -206,11 +237,11 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
   for (let i = 0; i < statusList.length; i++) {
     if (statusList[i] === true) {
       console.log(
-        `Report ${reportsToClaimTips[i]} is not eligible for tip claim (reward already claimed)`
+        `Report ${eligibleReports[i]} is not eligible for tip claim (reward already claimed)`
       );
       continue;
     }
-    reportsTimestampsNotClaimed.push(reportsToClaimTips[i]);
+    reportsTimestampsNotClaimed.push(eligibleReports[i]);
   }
 
   if (reportsTimestampsNotClaimed.length === 0) {
