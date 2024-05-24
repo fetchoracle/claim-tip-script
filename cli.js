@@ -176,24 +176,49 @@ async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContr
   }
 }
 
-function getEligibleReports(reports_timestamp, is_one_time_tip = false) {
-  const twelve_hours = 12 * 60 * 60;
-  const four_weeks = 4 * 7 * 24 * 60 * 60;
+function getEligibleReports(reportsTimestamp, isOneTimeTip = false) {
+  const twelveHoursInSeconds = 12 * 60 * 60;
+  const fourWeeksInSeconds = 4 * 7 * 24 * 60 * 60;
 
-  const current_time_seconds = Math.floor(Date.now() / 1000);
-  const buffer_time = parseInt(process.env.BUFFER_TIME) || twelve_hours;
-  const report_timestamp_timeout = parseInt(process.env.REPORT_TIMESTAMP_TIMEOUT) || four_weeks;
+  const bufferTime = parseInt(process.env.BUFFER_TIME) || twelveHoursInSeconds;
+  const reportTimestampTimeout = parseInt(process.env.REPORT_TIMESTAMP_TIMEOUT) || fourWeeksInSeconds;
 
-  const has_condition_one_time_tip = (age) => age >= buffer_time;
-  const has_condititon_feed_tip = (age) => age >= buffer_time && age <= report_timestamp_timeout;
+  const currentTimeSeconds = Math.floor(Date.now() / 1000);
 
-  const has_conditition = is_one_time_tip ? has_condition_one_time_tip : has_condititon_feed_tip;
+  const isEligible = isOneTimeTip
+    ? (age) => age >= bufferTime
+    : (age) => age >= bufferTime && age <= reportTimestampTimeout;
 
-  const eligibleReports = reports_timestamp.filter((report_timestamp) => {
-      const age = current_time_seconds - report_timestamp;
-      return has_conditition(age);
+  const logIneligibleReport = (reportTimestamp, age) => {
+    const isWithinBufferTime = age >= bufferTime;
+    const isWithinReportTimestampTimeout = age <= reportTimestampTimeout;
+
+    const bufferTimeComparison = `${bufferTime} <= ${age} = ${isWithinBufferTime}`;
+    const reportTimeoutComparison = `${age} <= ${reportTimestampTimeout} = ${isWithinReportTimestampTimeout}`;
+
+    const comparisonConditionInfo = isOneTimeTip
+      ? `age >= bufferTime: ${bufferTimeComparison}`
+      : `Buffer time <= age <= reportTimestampTimeout: ${reportTimeoutComparison}`;
+
+    console.log(`
+      Report ${reportTimestamp} (${getFormattedTimestamp(reportTimestamp)}) is not eligible for tip claim.
+      Timestamp age: ${age} seconds
+      Buffer time: ${bufferTime} seconds
+      Report timestamp timeout: ${reportTimestampTimeout} seconds
+      ${comparisonConditionInfo}
+    `);
+  };
+
+  const eligibleReports = reportsTimestamp.filter(reportTimestamp => {
+    const age = currentTimeSeconds - reportTimestamp;
+    const isReportEligible = isEligible(age);
+
+    if (!isReportEligible) {
+      logIneligibleReport(reportTimestamp, age);
     }
-  );
+
+    return isReportEligible;
+  });
 
   return eligibleReports;
 }
