@@ -67,6 +67,9 @@ class AutopayContract {
         if (_queryId !== queryId) {
             return;
         }
+        if (_feedId !== feedId) {
+            return;
+        }
 
         console.log("--------------------");
         console.log("TipClaimed event emitted");
