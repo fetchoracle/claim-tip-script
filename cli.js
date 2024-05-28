@@ -112,7 +112,7 @@ function get_reports_timestamps_to_claim_tips(reports, tipTimestampsToClaim) {
 
 function get_reports_timestamps_to_claim_feed_tips(reports, [dataFeed_startTime]) {
   const reportsToClaimTips = reports.filter(report => report._time >= dataFeed_startTime);
-  return reportsToClaimTips;
+  return reportsToClaimTips.map(report => report._time);
 }
 
 async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContractInstance) {
