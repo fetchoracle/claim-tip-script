@@ -37,6 +37,7 @@ function handleRevertError(error) {
     "buffer time has not passed": "Buffer time of 12 hours has not passed since the report timestamp. Please wait and try again later",
     "timestamp too old to claim tip": "Timestamp too old to claim tip, algorithm error",
     "price threshold not met": "Price threshold not met",
+    "no funds available for this feed": "No funds available for this feed",
   };
 
   const errorMessage = errorMessages[error.reason];
