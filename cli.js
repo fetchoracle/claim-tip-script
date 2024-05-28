@@ -110,6 +110,11 @@ function get_reports_timestamps_to_claim_tips(reports, tipTimestampsToClaim) {
   return reportsToClaimTips;
 }
 
+function get_reports_timestamps_to_claim_feed_tips(reports, [dataFeed_startTime]) {
+  const reportsToClaimTips = reports.filter(report => report._time >= dataFeed_startTime);
+  return reportsToClaimTips;
+}
+
 async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContractInstance) {
   autopayContractInstance.listenForOneTimeTipClaimed(queryId);
 
@@ -241,7 +246,7 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
   } = await autopayClient.request(getDataFeedQuery(dataFeedEntityID));
 
   // get the reports timestamps that come after the dataFeed._startime
-  const reportsToClaimTips = get_reports_timestamps_to_claim_tips(reports, [
+  const reportsToClaimTips = get_reports_timestamps_to_claim_feed_tips(reports, [
     dataFeed._startTime,
   ]);
 
