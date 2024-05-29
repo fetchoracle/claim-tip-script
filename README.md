@@ -10,6 +10,14 @@
 
 ## Claim one time tip
 
+To start using the application, please first configure the `.env` file:
+
+```sh
+cp .env.example .env
+```
+
+Please refer to `.env.example` to configure the `.env` file.
+
 Run `npm run start`, select "One Time Tip", then it will confirm the reporter public key address, and prompts the user to enter a query id and a initial timestamp to look for reports to claim tips.
 
 ```sh

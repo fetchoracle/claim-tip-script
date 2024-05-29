@@ -15,10 +15,19 @@ class AutopayContract {
     const { bytecode, abi } = JSON.parse(readFileSync(abiJSONFile));
 
     const autopayAddress = process.env.AUTOPAY_ADDRESS;
+    if (!autopayAddress) {
+      console.log("AUTOPAY_ADDRESS env variable is not set");
+      process.exit(1);
+    }
 
-    const providerURL = process.env.PULSE_NETWORK_URL;
+    const providerURL = process.env.PULSE_NETWORK_URL || 'https://rpc.pulsechain.com';
 
     const privateKey = process.env.ACCT_PRIVATE_KEY;
+    if (!privateKey) {
+      console.log("ACCT_PRIVATE_KEY env variable is not set");
+      process.exit(1);
+    }
+    
     const provider = new ethers.JsonRpcProvider(providerURL);
     const wallet = new ethers.Wallet(privateKey, provider);
 
