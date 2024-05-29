@@ -37,6 +37,7 @@ function handleRevertError(error) {
     "buffer time has not passed": "Buffer time of 12 hours has not passed since the report timestamp. Please wait and try again later",
     "timestamp too old to claim tip": "Timestamp too old to claim tip, algorithm error",
     "price threshold not met": "Price threshold not met",
+    "no funds available for this feed": "No funds available for this feed",
   };
 
   const errorMessage = errorMessages[error.reason];
@@ -108,6 +109,11 @@ function get_reports_timestamps_to_claim_tips(reports, tipTimestampsToClaim) {
   }
 
   return reportsToClaimTips;
+}
+
+function get_reports_timestamps_to_claim_feed_tips(reports, [dataFeed_startTime]) {
+  const reportsToClaimTips = reports.filter(report => report._time >= dataFeed_startTime);
+  return reportsToClaimTips.map(report => report._time);
 }
 
 async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContractInstance) {
@@ -241,7 +247,7 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
   } = await autopayClient.request(getDataFeedQuery(dataFeedEntityID));
 
   // get the reports timestamps that come after the dataFeed._startime
-  const reportsToClaimTips = get_reports_timestamps_to_claim_tips(reports, [
+  const reportsToClaimTips = get_reports_timestamps_to_claim_feed_tips(reports, [
     dataFeed._startTime,
   ]);
 
