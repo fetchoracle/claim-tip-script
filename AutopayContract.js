@@ -14,16 +14,16 @@ class AutopayContract {
     );
     const { bytecode, abi } = JSON.parse(readFileSync(abiJSONFile));
 
-    const autopayAddress = process.env.AUTOPAY_ADDRESS;
-    if (!autopayAddress) {
+    const autopayAddress = process.env.AUTOPAY_ADDRESS || '0x0000000000000000000000000000000000000000';
+    if (autopayAddress === "0x0000000000000000000000000000000000000000") {
       console.log("AUTOPAY_ADDRESS env variable is not set");
       process.exit(1);
     }
 
     const providerURL = process.env.PULSE_NETWORK_URL || 'https://rpc.pulsechain.com';
 
-    const privateKey = process.env.ACCT_PRIVATE_KEY;
-    if (!privateKey) {
+    const privateKey = process.env.ACCT_PRIVATE_KEY || "0000000000000000000000000000000000000000000000000000000000000000";
+    if (privateKey === "0000000000000000000000000000000000000000000000000000000000000000") {
       console.log("ACCT_PRIVATE_KEY env variable is not set");
       process.exit(1);
     }
@@ -105,7 +105,12 @@ class AutopayContract {
 
   static async create() {
     const instance = new AutopayContract();
-    await instance.initializeAsync();
+    try {
+      await instance.initializeAsync();
+    } catch (error) {
+      console.error("Error initializing AutopayContract:", error);
+      process.exit(1);
+    }
     return instance;
   }
 
