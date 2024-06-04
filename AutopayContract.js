@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
+const { getFormattedTimestamp } = require('./timestamps_utils')
 
 class AutopayContract {
   constructor() {
@@ -69,9 +70,7 @@ class AutopayContract {
     return listener;
   }
 
-  listenForTipClaimed(_queryId, _feedId, timeoutDuration = 120000) {
-    console.log(`Listening for TipClaimed events queryId=${_queryId}...`);
-
+  listenForTipClaimed(_queryId, _feedId, _timestamp, timeoutDuration = 120000) {
     const listener = (feedId, queryId, amount, reporter) => {
         if (_queryId !== queryId) {
             return;
@@ -86,6 +85,7 @@ class AutopayContract {
         console.log("queryId:", queryId);
         console.log("amount:", amount.toString());
         console.log("reporter:", reporter);
+        console.log("timestamp:", _timestamp.toString(), "(", getFormattedTimestamp(_timestamp), ")");
         console.log("--------------------");
 
         this.autopay.off("TipClaimed", listener);
@@ -95,7 +95,6 @@ class AutopayContract {
 
     const timeoutId = setTimeout(() => {
         this.autopay.off("TipClaimed", listener);
-        console.log(`Listener for queryId ${_queryId} removed after timeout`);
     }, process.env.LISTENER_TIMEOUT_DURATION * 1000 || timeoutDuration);
 
     this.autopay.on("TipClaimed", listener);

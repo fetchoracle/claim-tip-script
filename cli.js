@@ -30,7 +30,7 @@ function binarySearch(pastTips, target_timestamp) {
   return left;
 }
 
-function handleRevertError(error) {
+function handleRevertError(error, revertInfo=null) {
   const errorMessages = {
     "tip already claimed": "Some tips were already claimed, algorithm error",
     "reward already claimed": "Reward already claimed, algorithm error",
@@ -40,7 +40,21 @@ function handleRevertError(error) {
     "no funds available for this feed": "No funds available for this feed",
   };
 
+  if (revertInfo) {
+    console.log(`
+      Error claiming tip with timestamp ${getFormattedTimestamp(revertInfo.timestamp)}:
+      FeedId: ${revertInfo.feedId}
+      QueryId: ${revertInfo.queryId}
+      timestamp: ${revertInfo.timestamp}
+    `);
+  }
+
   const errorMessage = errorMessages[error.reason];
+
+  if (!errorMessage && error.reason) {
+    console.log(`Error: ${error.reason}`);
+    return;
+  }
 
   if (!errorMessage) {
     console.log('Unexpected error:')
@@ -232,8 +246,6 @@ function getEligibleReports(reportsTimestamp, isOneTimeTip = false) {
 async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractInstance, feedId) {
   console.log(`Checking eligible reports timestamps for FeedTip Id ${feedId}`);
 
-  autopayContractInstance.listenForTipClaimed(queryId, feedId);
-
   const { newReportEntities: reports } = await flexClient.request(
     getReportsQuery(timestamp_start, queryId, reporter)
   );
@@ -288,25 +300,30 @@ async function claimFeedTip(reporter, queryId, timestamp_start, autopayContractI
     `
   )
 
-  try {
-    const result = await autopayContractInstance.claimTip(
-      feedId,
-      queryId,
-      reportsTimestampsNotClaimed
-    );
-    await result.wait()
-    console.log(
-      `Claimed ${
-        reportsTimestampsNotClaimed.length
-      } tips, timestamps:\n${reportsTimestampsNotClaimed.map(
-        getFormattedTimestamp
-      )}
-      feedId: ${feedId}
-      queryId: ${queryId}
-      `
-    );
-  } catch (error) {
-    handleRevertError(error);
+  for (const timestamp of reportsTimestampsNotClaimed) {
+    autopayContractInstance.listenForTipClaimed(queryId, feedId, timestamp);
+    try {
+      const result = await autopayContractInstance.claimTip(
+        feedId,
+        queryId,
+        [timestamp]
+      );
+      console.log(
+        `
+        Claimed tip with timestamp ${getFormattedTimestamp(timestamp)}:
+        Timestamp: ${timestamp}
+        FeedId: ${feedId}
+        QueryId: ${queryId}
+        `
+      );
+      await result.wait();
+    } catch (error) {
+      handleRevertError(error, {
+        feedId,
+        queryId,
+        timestamp
+      });
+    }
   }
 }
 
