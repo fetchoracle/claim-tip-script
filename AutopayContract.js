@@ -154,6 +154,11 @@ class AutopayContract {
   async claimTip(feedId, queryId, reportsTimestamps) {
     return await this.autopay.claimTip(feedId, queryId, reportsTimestamps);
   }
+
+  async getDataBefore(queryId, timestamp) {
+    const data = await this.autopay.getDataBefore(queryId, timestamp);
+    return data;
+  }
 }
 
 exports.AutopayContract = AutopayContract;

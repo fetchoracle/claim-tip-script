@@ -91,35 +91,32 @@ async function get_tips_timestamps_to_claim(
   return tipTimestampsToClaim;
 }
 
-function get_reports_timestamps_to_claim_tips(reports, tipTimestampsToClaim) {
+async function getTimestampBefore(queryId, autopayContractInstance, reportTimestamp) {
+  const timestampBefore = await autopayContractInstance.getDataBefore(queryId, reportTimestamp);
+  const [value, timestamp] = timestampBefore;
+  return parseInt(timestamp.toString());
+}
+
+async function get_reports_timestamps_to_claim_tips(queryId, autopayContractInstance, reports, tipTimestampsToClaim) {
   const reportsToClaimTips = [];
   let reportIndex = 0;
 
-  for (
-    let tipIndex = 0;
-    tipIndex < tipTimestampsToClaim.length && reportIndex < reports.length;
-    tipIndex++
-  ) {
-    let tipTimestamp = tipTimestampsToClaim[tipIndex];
-    let reportTimestamp = reports[reportIndex]._time;
+  for (let tipIndex = 0; tipIndex < tipTimestampsToClaim.length; tipIndex++) {
+    const tipTimestamp = tipTimestampsToClaim[tipIndex].timestamp;
+    const isLastTip = tipIndex >= tipTimestampsToClaim.length - 1;
+    const nextTipTimestamp = isLastTip ? Number.MAX_SAFE_INTEGER : tipTimestampsToClaim[tipIndex + 1].timestamp;
 
-    const nextTipTimestamp =
-      tipIndex < tipTimestampsToClaim.length - 1
-        ? tipTimestampsToClaim[tipIndex + 1]
-        : Number.MAX_SAFE_INTEGER;
+    while (reportIndex < reports.length && Number(reports[reportIndex]._time) < Number(nextTipTimestamp)) {
+      const reportTimestamp = Number(reports[reportIndex]._time);
+      const timestampBefore = await getTimestampBefore(queryId, autopayContractInstance, reportTimestamp);
 
-    while (
-      reportIndex < reports.length &&
-      reportTimestamp < tipTimestamp &&
-      reportTimestamp < nextTipTimestamp
-    ) {
-      reportTimestamp = reports[reportIndex++]._time;
+      if (timestampBefore < tipTimestamp && reportTimestamp >= tipTimestamp && reportTimestamp < nextTipTimestamp) {
+        reportsToClaimTips.push(reportTimestamp);
+        break;
+      }
+
+      reportIndex++;
     }
-
-    if (reportTimestamp < tipTimestamp || reportTimestamp >= nextTipTimestamp)
-      continue;
-
-    reportsToClaimTips.push(reportTimestamp);
   }
 
   return reportsToClaimTips;
@@ -161,7 +158,9 @@ async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContr
 
   console.log(`Found ${tipsTimestampsToClaim.length} tips to claim for queryId ${queryId}`);
 
-  const reportsToClaimTips = get_reports_timestamps_to_claim_tips(
+  const reportsToClaimTips = await get_reports_timestamps_to_claim_tips(
+    queryId,
+    autopayContractInstance,
     reports,
     tipsTimestampsToClaim
   );
