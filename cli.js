@@ -128,8 +128,6 @@ function get_reports_timestamps_to_claim_feed_tips(reports, [dataFeed_startTime]
 }
 
 async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContractInstance) {
-  autopayContractInstance.listenForOneTimeTipClaimed(queryId);
-
   const { newReportEntities: reports } = await flexClient.request(
     getReportsQuery(timestamp_start, queryId, reporter)
   );
@@ -179,18 +177,15 @@ async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContr
     `
   )
 
-  try {
-    const result = await autopayContractInstance.claimOneTimeTip(queryId, eligibleReports);
-    await result.wait()
-    console.log(
-      `Claimed ${
-        eligibleReports.length
-      } tips, timestamps:\n${eligibleReports.map(getFormattedTimestamp)}
-      queryId: ${queryId}
-      `
-    );
-  } catch (error) {
-    handleRevertError(error);
+  for (const timestamp of eligibleReports) {
+    try {
+      autopayContractInstance.listenForOneTimeTipClaimed(queryId, timestamp);
+      const result = await autopayContractInstance.claimOneTimeTip(queryId, [timestamp]);
+      console.log(`Claimed one-time tip with timestamp ${getFormattedTimestamp(timestamp)} (${timestamp})`)
+      await result.wait();
+    } catch (error) {
+      handleRevertError(error, { queryId, timestamp });
+    }
   }
 }
 

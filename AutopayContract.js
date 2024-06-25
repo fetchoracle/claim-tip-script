@@ -41,13 +41,16 @@ class AutopayContract {
     this.autopay = autopay;
   }
 
-  listenForOneTimeTipClaimed(_queryId, timeoutDuration = 120000) {
+  listenForOneTimeTipClaimed(_queryId, _timestamp, timeoutDuration = 120000) {
     console.log(`Listening for OneTimeTipClaimed events queryId=${_queryId}...`);
 
     const listener = (queryId, amount, reporter) => {
         if (_queryId !== queryId) {
             return;
         }
+
+        // TODO: check unique _timestamp in some way, the current issue is that the contract does not emit the timestamp
+        
         console.log("--------------------");
         console.log("OneTimeTipClaimed event emitted");
         console.log("queryId:", queryId);
