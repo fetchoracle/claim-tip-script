@@ -102,9 +102,9 @@ async function get_reports_timestamps_to_claim_tips(queryId, autopayContractInst
   let reportIndex = 0;
 
   for (let tipIndex = 0; tipIndex < tipTimestampsToClaim.length; tipIndex++) {
-    const tipTimestamp = tipTimestampsToClaim[tipIndex].timestamp;
+    const tipTimestamp = tipTimestampsToClaim[tipIndex];
     const isLastTip = tipIndex >= tipTimestampsToClaim.length - 1;
-    const nextTipTimestamp = isLastTip ? Number.MAX_SAFE_INTEGER : tipTimestampsToClaim[tipIndex + 1].timestamp;
+    const nextTipTimestamp = isLastTip ? Number.MAX_SAFE_INTEGER : tipTimestampsToClaim[tipIndex + 1];
 
     while (reportIndex < reports.length && Number(reports[reportIndex]._time) < Number(nextTipTimestamp)) {
       const reportTimestamp = Number(reports[reportIndex]._time);
@@ -177,9 +177,10 @@ async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContr
     `
   )
 
+  autopayContractInstance.listenForOneTimeTipClaimed(queryId);
+  autopayContractInstance.addOneTimeTipEventsToQueue(eligibleReports);
   for (const timestamp of eligibleReports) {
     try {
-      autopayContractInstance.listenForOneTimeTipClaimed(queryId, timestamp);
       const result = await autopayContractInstance.claimOneTimeTip(queryId, [timestamp]);
       console.log(`Claimed one-time tip with timestamp ${getFormattedTimestamp(timestamp)} (${timestamp})`)
       await result.wait();
