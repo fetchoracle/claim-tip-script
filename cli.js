@@ -43,7 +43,7 @@ function handleRevertError(error, revertInfo=null) {
   if (revertInfo) {
     console.log(`
       Error claiming tip with timestamp ${getFormattedTimestamp(revertInfo.timestamp)}:
-      FeedId: ${revertInfo.feedId}
+      FeedId: ${revertInfo.feedId ? revertInfo.feedId : 'N/A (One Time Tip)'}
       QueryId: ${revertInfo.queryId}
       timestamp: ${revertInfo.timestamp}
     `);
