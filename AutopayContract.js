@@ -6,6 +6,8 @@ const { getFormattedTimestamp } = require('./timestamps_utils')
 class AutopayContract {
   constructor() {
     this.autopay = null;
+    this.oneTimeTipEventsPending = 0;
+    this.oneTimeTipEventsHandled = 0;
   }
 
   async initializeAsync() {
@@ -45,19 +47,22 @@ class AutopayContract {
     console.log(`Listening for OneTimeTipClaimed events queryId=${_queryId}...`);
 
     const listener = (queryId, amount, reporter) => {
-        if (_queryId !== queryId) {
-            return;
-        }
         console.log("--------------------");
         console.log("OneTimeTipClaimed event emitted");
         console.log("queryId:", queryId);
         console.log("amount:", amount.toString());
         console.log("reporter:", reporter);
         console.log("--------------------");
+        this.oneTimeTipEventsHandled++;
 
-        this.autopay.off("OneTimeTipClaimed", listener);
+        if (this.oneTimeTipEventsHandled === this.oneTimeTipEventsPending) {
+          this.oneTimeTipEventsPending = 0;
+          this.oneTimeTipEventsHandled = 0;
 
-        clearTimeout(timeoutId);
+          this.autopay.off("OneTimeTipClaimed", listener);
+
+          clearTimeout(timeoutId);
+        }
     };
 
     const timeoutId = setTimeout(() => {
@@ -68,6 +73,12 @@ class AutopayContract {
     this.autopay.on("OneTimeTipClaimed", listener);
 
     return listener;
+  }
+
+  addOneTimeTipEventsToQueue(eligibleReports) {
+    eligibleReports.forEach(() => {
+      this.oneTimeTipEventsPending++;
+    });
   }
 
   listenForTipClaimed(_queryId, _feedId, _timestamp, timeoutDuration = 120000) {
@@ -153,6 +164,11 @@ class AutopayContract {
 
   async claimTip(feedId, queryId, reportsTimestamps) {
     return await this.autopay.claimTip(feedId, queryId, reportsTimestamps);
+  }
+
+  async getDataBefore(queryId, timestamp) {
+    const data = await this.autopay.getDataBefore(queryId, timestamp);
+    return data;
   }
 }
 

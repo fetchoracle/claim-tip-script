@@ -43,7 +43,7 @@ function handleRevertError(error, revertInfo=null) {
   if (revertInfo) {
     console.log(`
       Error claiming tip with timestamp ${getFormattedTimestamp(revertInfo.timestamp)}:
-      FeedId: ${revertInfo.feedId}
+      FeedId: ${revertInfo.feedId ? revertInfo.feedId : 'N/A (One Time Tip)'}
       QueryId: ${revertInfo.queryId}
       timestamp: ${revertInfo.timestamp}
     `);
@@ -91,35 +91,32 @@ async function get_tips_timestamps_to_claim(
   return tipTimestampsToClaim;
 }
 
-function get_reports_timestamps_to_claim_tips(reports, tipTimestampsToClaim) {
+async function getTimestampBefore(queryId, autopayContractInstance, reportTimestamp) {
+  const timestampBefore = await autopayContractInstance.getDataBefore(queryId, reportTimestamp);
+  const [value, timestamp] = timestampBefore;
+  return parseInt(timestamp.toString());
+}
+
+async function get_reports_timestamps_to_claim_tips(queryId, autopayContractInstance, reports, tipTimestampsToClaim) {
   const reportsToClaimTips = [];
   let reportIndex = 0;
 
-  for (
-    let tipIndex = 0;
-    tipIndex < tipTimestampsToClaim.length && reportIndex < reports.length;
-    tipIndex++
-  ) {
-    let tipTimestamp = tipTimestampsToClaim[tipIndex];
-    let reportTimestamp = reports[reportIndex]._time;
+  for (let tipIndex = 0; tipIndex < tipTimestampsToClaim.length; tipIndex++) {
+    const tipTimestamp = tipTimestampsToClaim[tipIndex];
+    const isLastTip = tipIndex >= tipTimestampsToClaim.length - 1;
+    const nextTipTimestamp = isLastTip ? Number.MAX_SAFE_INTEGER : tipTimestampsToClaim[tipIndex + 1];
 
-    const nextTipTimestamp =
-      tipIndex < tipTimestampsToClaim.length - 1
-        ? tipTimestampsToClaim[tipIndex + 1]
-        : Number.MAX_SAFE_INTEGER;
+    while (reportIndex < reports.length && Number(reports[reportIndex]._time) < Number(nextTipTimestamp)) {
+      const reportTimestamp = Number(reports[reportIndex]._time);
+      const timestampBefore = await getTimestampBefore(queryId, autopayContractInstance, reportTimestamp);
 
-    while (
-      reportIndex < reports.length &&
-      reportTimestamp < tipTimestamp &&
-      reportTimestamp < nextTipTimestamp
-    ) {
-      reportTimestamp = reports[reportIndex++]._time;
+      if (timestampBefore < tipTimestamp && reportTimestamp >= tipTimestamp && reportTimestamp < nextTipTimestamp) {
+        reportsToClaimTips.push(reportTimestamp);
+        break;
+      }
+
+      reportIndex++;
     }
-
-    if (reportTimestamp < tipTimestamp || reportTimestamp >= nextTipTimestamp)
-      continue;
-
-    reportsToClaimTips.push(reportTimestamp);
   }
 
   return reportsToClaimTips;
@@ -131,8 +128,6 @@ function get_reports_timestamps_to_claim_feed_tips(reports, [dataFeed_startTime]
 }
 
 async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContractInstance) {
-  autopayContractInstance.listenForOneTimeTipClaimed(queryId);
-
   const { newReportEntities: reports } = await flexClient.request(
     getReportsQuery(timestamp_start, queryId, reporter)
   );
@@ -161,7 +156,9 @@ async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContr
 
   console.log(`Found ${tipsTimestampsToClaim.length} tips to claim for queryId ${queryId}`);
 
-  const reportsToClaimTips = get_reports_timestamps_to_claim_tips(
+  const reportsToClaimTips = await get_reports_timestamps_to_claim_tips(
+    queryId,
+    autopayContractInstance,
     reports,
     tipsTimestampsToClaim
   );
@@ -180,18 +177,16 @@ async function claimOneTimeTips(reporter, queryId, timestamp_start, autopayContr
     `
   )
 
-  try {
-    const result = await autopayContractInstance.claimOneTimeTip(queryId, eligibleReports);
-    await result.wait()
-    console.log(
-      `Claimed ${
-        eligibleReports.length
-      } tips, timestamps:\n${eligibleReports.map(getFormattedTimestamp)}
-      queryId: ${queryId}
-      `
-    );
-  } catch (error) {
-    handleRevertError(error);
+  autopayContractInstance.listenForOneTimeTipClaimed(queryId);
+  autopayContractInstance.addOneTimeTipEventsToQueue(eligibleReports);
+  for (const timestamp of eligibleReports) {
+    try {
+      const result = await autopayContractInstance.claimOneTimeTip(queryId, [timestamp]);
+      console.log(`Claimed one-time tip with timestamp ${getFormattedTimestamp(timestamp)} (${timestamp})`)
+      await result.wait();
+    } catch (error) {
+      handleRevertError(error, { queryId, timestamp });
+    }
   }
 }
 
